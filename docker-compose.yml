@@ -1,0 +1,25 @@
+# Test en local AVANT de déployer sur Kubernetes :
+#   docker compose up --build
+#   puis ouvrir http://localhost:3000
+services:
+  mongo:
+    image: mongo:7
+    container_name: todo-mongo
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+
+  todo-app:
+    build: ./app
+    image: todo-app:v1
+    container_name: todo-app
+    ports:
+      - "3000:3000"
+    environment:
+      MONGO_URL: mongodb://mongo:27017/todos
+    depends_on:
+      - mongo
+    restart: unless-stopped
+
+volumes:
+  mongo-data:

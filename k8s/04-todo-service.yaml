@@ -1,0 +1,18 @@
+# ------------------------------------------------------------
+#  Exposition publique : sur EKS, "LoadBalancer" crée
+#  automatiquement un Load Balancer AWS (ELB) avec une URL publique.
+#  Sur k3s, ServiceLB expose l'app sur le port 80 de l'instance EC2.
+# ------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: todo-app
+  namespace: todo
+spec:
+  type: LoadBalancer
+  selector:
+    app: todo-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

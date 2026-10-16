@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do List — Docker &amp; Kubernetes sur AWS</title>
+  <style>
+    :root { --bg:#f4f6fb; --card:#fff; --text:#1d2433; --muted:#6b7385; --accent:#ff9900; --dark:#232f3e; --ok:#1f9d55; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+    header { background:var(--dark); color:#fff; padding:20px 16px; }
+    header h1 { margin:0 auto; max-width:640px; font-size:1.4rem; }
+    header h1 span { color:var(--accent); }
+    main { max-width:640px; margin:24px auto; padding:0 16px; }
+    .card { background:var(--card); border-radius:12px; padding:20px; box-shadow:0 2px 10px rgba(0,0,0,.06); }
+    form { display:flex; gap:8px; }
+    input[type=text] { flex:1; padding:12px; border:1px solid #d6dae3; border-radius:8px; font-size:1rem; }
+    button { padding:12px 18px; border:0; border-radius:8px; background:var(--accent); color:var(--dark); font-weight:600; cursor:pointer; }
+    button:hover { filter:brightness(.95); }
+    ul { list-style:none; padding:0; margin:16px 0 0; }
+    li { display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid #eef0f4; }
+    li:last-child { border-bottom:0; }
+    li label { flex:1; cursor:pointer; word-break:break-word; }
+    li.done label { text-decoration:line-through; color:var(--muted); }
+    li input[type=checkbox] { width:18px; height:18px; accent-color:var(--ok); }
+    .del { background:transparent; color:#c0392b; padding:6px 10px; font-size:1.1rem; }
+    .empty { color:var(--muted); text-align:center; padding:16px; }
+    .info { margin-top:16px; font-size:.85rem; color:var(--muted); display:flex; flex-wrap:wrap; gap:8px; }
+    .badge { background:#e8ebf2; padding:4px 10px; border-radius:999px; }
+    .badge b { color:var(--text); }
+  </style>
+</head>
+<body>
+  <header><h1>📝 To-Do List <span>· Docker + Kubernetes sur AWS</span></h1></header>
+
+  <main>
+    <div class="card">
+      <form id="form">
+        <input id="title" type="text" placeholder="Nouvelle tâche…" maxlength="200" autocomplete="off" required />
+        <button type="submit">Ajouter</button>
+      </form>
+      <ul id="list"></ul>
+    </div>
+
+    <!-- Infos du pod qui a répondu : recharger la page pour voir le load-balancing -->
+    <div class="info" id="info"></div>
+  </main>
+
+  <script>
+    const list = document.getElementById("list");
+    const form = document.getElementById("form");
+    const input = document.getElementById("title");
+
+    async function api(url, options = {}) {
+      const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
+      if (!res.ok && res.status !== 204) throw new Error((await res.json()).error || res.statusText);
+      return res.status === 204 ? null : res.json();
+    }
+
+    function render(todos) {
+      list.innerHTML = "";
+      if (!todos.length) {
+        list.innerHTML = '<li class="empty">Aucune tâche pour le moment 🎉</li>';
+        return;
+      }
+      for (const t of todos) {
+        const li = document.createElement("li");
+        li.className = t.done ? "done" : "";
+
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = t.done; cb.id = "t-" + t.id;
+        cb.onchange = () => api("/api/todos/" + t.id, { method: "PATCH", body: JSON.stringify({ done: cb.checked }) }).then(load);
+
+        const label = document.createElement("label");
+        label.htmlFor = cb.id; label.textContent = t.title;
+
+        const del = document.createElement("button");
+        del.className = "del"; del.title = "Supprimer"; del.textContent = "✕";
+        del.onclick = () => api("/api/todos/" + t.id, { method: "DELETE" }).then(load);
+
+        li.append(cb, label, del);
+        list.appendChild(li);
+      }
+    }
+
+    async function load() {
+      try { render(await api("/api/todos")); }
+      catch (e) { list.innerHTML = '<li class="empty">Erreur : ' + e.message + "</li>"; }
+    }
+
+    async function loadInfo() {
+      try {
+        const i = await api("/api/info");
+        document.getElementById("info").innerHTML =
+          '<span class="badge">Pod : <b>' + i.hostname + '</b></span>' +
+          '<span class="badge">Version : <b>' + i.version + '</b></span>' +
+          '<span class="badge">Stockage : <b>' + i.storage + '</b></span>';
+      } catch (_) {}
+    }
+
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const title = input.value.trim();
+      if (!title) return;
+      await api("/api/todos", { method: "POST", body: JSON.stringify({ title }) });
+      input.value = "";
+      load();
+    };
+
+    load();
+    loadInfo();
+  </script>
+</body>
+</html>

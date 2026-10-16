@@ -1,0 +1,5 @@
+# Espace de noms dédié au TP : toutes les ressources y seront créées
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: todo

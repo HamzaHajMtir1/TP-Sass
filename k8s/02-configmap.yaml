@@ -1,0 +1,10 @@
+# Configuration de l'application, séparée du code et de l'image
+# (APP_VERSION n'est pas ici : elle est gravée dans l'image au build)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-config
+  namespace: todo
+data:
+  MONGO_URL: "mongodb://mongo:27017/todos"
+  PORT: "3000"

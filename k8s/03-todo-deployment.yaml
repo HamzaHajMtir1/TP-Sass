@@ -1,0 +1,58 @@
+# ------------------------------------------------------------
+#  Application To-Do (2 répliques derrière un Service)
+#  ⚠️ Remplacer <ACCOUNT_ID> par l'ID de votre compte AWS
+#     (commande sed fournie dans le README)
+# ------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: todo-app
+  namespace: todo
+  labels:
+    app: todo-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: todo-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # zéro interruption pendant une mise à jour
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      containers:
+        - name: todo-app
+          image: <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/todo-app:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: todo-config
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+          # Le pod ne reçoit du trafic que lorsqu'il est connecté à MongoDB
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          # Si l'application ne répond plus, Kubernetes redémarre le conteneur
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 3

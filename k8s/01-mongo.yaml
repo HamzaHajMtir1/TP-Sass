@@ -1,0 +1,54 @@
+# ------------------------------------------------------------
+#  Base de données MongoDB (1 réplique)
+#  NB : stockage "emptyDir" -> les données sont perdues si le pod
+#  est supprimé. Suffisant pour un TP (voir README pour un PVC).
+# ------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongo
+  namespace: todo
+  labels:
+    app: mongo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7
+          ports:
+            - containerPort: 27017
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db
+      volumes:
+        - name: mongo-data
+          emptyDir: {}
+---
+# Service interne (ClusterIP) : l'application joint MongoDB via le nom DNS "mongo"
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: todo
+spec:
+  type: ClusterIP
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+      targetPort: 27017
